@@ -2,6 +2,7 @@ package com.kinancity.mail.activator;
 
 import java.io.IOException;
 import java.util.ArrayDeque;
+import java.util.Properties;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,7 +19,7 @@ import okhttp3.Response;
 
 /**
  * Class that will take care of following the activation link
- * 
+ *
  * @author drallieiv
  *
  */
@@ -32,6 +33,8 @@ public class QueueLinkActivator implements LinkActivator, Runnable {
 	private static final String INVALID_TOKEN_MSG = "We cannot find an account matching the confirmation email.";
 	private static final String THROTTLE_MSG = "403 Forbidden";
 
+	private Properties config;
+
 	private okhttp3.OkHttpClient client;
 
 	private ArrayDeque<Activation> linkQueue;
@@ -42,12 +45,14 @@ public class QueueLinkActivator implements LinkActivator, Runnable {
 	@Setter
 	private HttpProxy httpProxy;
 
-	public QueueLinkActivator() {
+	public QueueLinkActivator(Properties config) {
 		if (httpProxy != null) {
 			client = httpProxy.getClient();
 		} else {
 			client = new OkHttpClient.Builder().build();
 		}
+
+		this.config = config;
 
 		linkQueue = new ArrayDeque<>();
 
@@ -83,13 +88,13 @@ public class QueueLinkActivator implements LinkActivator, Runnable {
 				if (response.isSuccessful()) {
 					if (strResponse.contains(SUCCESS_MSG)) {
 						logger.info("Activation success : Your account is now active");
-						FileLogger.logStatus(link, FileLogger.OK);
+						FileLogger.logStatus(link, FileLogger.OK, config);
 					} else if (strResponse.contains(ALREADY_DONE_MSG)) {
 						logger.info("Activation success : Activation already done");
-						FileLogger.logStatus(link, FileLogger.DONE);
+						FileLogger.logStatus(link, FileLogger.DONE, config);
 					} else if (strResponse.contains(INVALID_TOKEN_MSG)) {
 						logger.error("Invalid Activation token");
-						FileLogger.logStatus(link, FileLogger.BAD);
+						FileLogger.logStatus(link, FileLogger.BAD, config);
 						success = false;
 					} else {
 						logger.warn("OK response but missing confirmation.");
@@ -102,7 +107,7 @@ public class QueueLinkActivator implements LinkActivator, Runnable {
 						throttlePause();
 					} else {
 						logger.error("Unexpected Error {} : {}", response.code(), strResponse);
-						FileLogger.logStatus(link, FileLogger.ERROR);
+						FileLogger.logStatus(link, FileLogger.ERROR, config);
 						success = false;
 					}
 
@@ -113,7 +118,7 @@ public class QueueLinkActivator implements LinkActivator, Runnable {
 
 		} catch (IOException e) {
 			logger.error("IOException {}", e.getMessage());
-			FileLogger.logStatus(link, FileLogger.ERROR);
+			FileLogger.logStatus(link, FileLogger.ERROR, config);
 			return false;
 		}
 	}

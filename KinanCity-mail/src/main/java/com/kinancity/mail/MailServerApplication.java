@@ -68,7 +68,7 @@ public class MailServerApplication {
 			LinkActivator activator = getQueueLinkActivator();
 			if (mode.equals("log")) {
 				System.out.println("Started in Log Mode");
-				activator = new ToFileLinkActivator();
+				activator = new ToFileLinkActivator(config);
 			} else {
 				System.out.println("Started in Direct Mode");
 			}
@@ -101,7 +101,7 @@ public class MailServerApplication {
 	}
 
 	public static LinkActivator getQueueLinkActivator() {
-		QueueLinkActivator activator = new QueueLinkActivator();
+		QueueLinkActivator activator = new QueueLinkActivator(config);
 
 		String proxy = config.getProperty("proxy");
 		if (proxy != null) {

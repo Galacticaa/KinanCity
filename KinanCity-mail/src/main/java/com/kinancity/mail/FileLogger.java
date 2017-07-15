@@ -7,6 +7,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.Properties;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,14 +27,18 @@ public class FileLogger {
 
 	private static Connection dbConn = null;
 
-	public static void logStatus(Activation link, String status) {
+	public static void logStatus(Activation link, String status, Properties config) {
 		LOGGER.info("{};{};{}", link.getLink(), link.getEmail(), status);
 
 		try {
 			Class.forName("com.mysql.jdbc.Driver");
 
-			String dsn = String.format("jdbc:mysql://%s:%s/%s", "localhost", 3306, "somedb");
-			dbConn = DriverManager.getConnection(dsn, "root", "root");
+			String dsn = String.format("jdbc:mysql://%s:%s/%s",
+				config.getProperty("dbHost"),
+				Integer.parseInt(config.getProperty("dbPort")),
+				config.getProperty("dbName")
+			);
+			dbConn = DriverManager.getConnection(dsn, config.getProperty("dbUser"), config.getProperty("dbPass"));
 
 			if (dbConn == null) {
 				errlog.info("Failed to connect to database.");
