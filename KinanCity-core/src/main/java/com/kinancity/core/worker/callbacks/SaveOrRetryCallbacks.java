@@ -1,6 +1,11 @@
 package com.kinancity.core.worker.callbacks;
 
 import java.util.List;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.time.Instant;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,6 +17,8 @@ import com.kinancity.core.scheduling.AccountCreationQueue;
 public class SaveOrRetryCallbacks implements CreationCallbacks {
 
 	private Logger logger = LoggerFactory.getLogger(getClass());
+
+	private Connection dbConn;
 
 	// Queue where item can be rescheduled
 	private AccountCreationQueue queue;
@@ -27,10 +34,11 @@ public class SaveOrRetryCallbacks implements CreationCallbacks {
 	// Number of try max
 	private int nbMaxTries = 3;
 
-	public SaveOrRetryCallbacks(AccountCreationQueue queue, List<AccountCreation> done, List<AccountCreation> failed, ResultLogger resultLogger) {
+	public SaveOrRetryCallbacks(AccountCreationQueue queue, List<AccountCreation> done, List<AccountCreation> failed, Connection dbConn, ResultLogger resultLogger) {
 		this.queue = queue;
 		this.done = done;
 		this.failed = failed;
+		this.dbConn = dbConn;
 		this.resultLogger = resultLogger;
 	}
 
@@ -54,6 +62,15 @@ public class SaveOrRetryCallbacks implements CreationCallbacks {
 	public void onSuccess(AccountCreation accountCreation) {
 		resultLogger.logLine(accountCreation.getAccountData().toCsv() + ";OK;");
 		done.add(accountCreation);
+
+		try {
+			PreparedStatement query = dbConn.prepareStatement("UPDATE accounts SET registered_at=? WHERE username=?");
+			query.setTimestamp(1, Timestamp.from(Instant.now()));
+			query.setString(2, accountCreation.getAccountData().getUsername());
+			query.executeUpdate();
+		} catch (SQLException e) {
+			logger.info("Failed to set registration date for " + accountCreation.getAccountData().getUsername());
+		}
 	}
 
 	@Override

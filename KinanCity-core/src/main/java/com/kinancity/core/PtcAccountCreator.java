@@ -1,5 +1,8 @@
 package com.kinancity.core;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -29,6 +32,8 @@ public class PtcAccountCreator {
 
 	private Configuration config;
 
+	private Connection dbConn = null;
+
 	private int initialCount = 0;
 
 	// how fast should the status check, in ms.
@@ -52,12 +57,35 @@ public class PtcAccountCreator {
 	}
 
 	public void start() {
+		connectDatabase();
+
 		// Add All creation in a queue
 		scheduleCreations();
 
 		setupWorkers();
 
 		showProgress();
+	}
+
+	private void connectDatabase() {
+		try {
+			Class.forName("com.mysql.jdbc.Driver");
+
+			String dsn = String.format("jdbc:mysql://%s:%s/%s", config.getDbHost(), config.getDbPort(), config.getDbName());
+			dbConn = DriverManager.getConnection(dsn, config.getDbUser(), config.getDbPass());
+
+			if (dbConn != null) {
+				logger.info("Database connection successful.");
+			} else {
+				logger.info("Database connection failed!");
+				System.exit(1);
+			}
+		} catch (ClassNotFoundException e) {
+			logger.info("Could not find JDBC driver.");
+		} catch (SQLException e) {
+			logger.info("Failed to connect to database.");
+			System.exit(1);
+		}
 	}
 
 	/**
@@ -88,14 +116,14 @@ public class PtcAccountCreator {
 		resultLogger.logStart();
 
 		// Callback for creation
-		CreationCallbacks callbacks = new SaveOrRetryCallbacks(queue, done, failed, resultLogger);
-		
+		CreationCallbacks callbacks = new SaveOrRetryCallbacks(queue, done, failed, dbConn, resultLogger);
+
 		// Captcha Provider from config
 		CaptchaQueue captchaQueue = config.getCaptchaQueue();
-		
+
 		// Proxy Manager from config
 		ProxyManager proxyManager = config.getProxyManager();
-		
+
 		// Bottleneck for proxies
 		Bottleneck bottleneck = config.getBottleneck();
 
@@ -130,12 +158,18 @@ public class PtcAccountCreator {
 		}
 		logger.info("Batch creation progress : {}/{} done with {} failures", done.size() + failed.size(), initialCount, failed.size());
 
+		try {
+			dbConn.close();
+		} catch (SQLException e) {
+			logger.info("Failed to close db connection");
+		}
+
 		// End Logs
 		ResultLogger resultLogger = config.getResultLogger();
 		resultLogger.logEnd();
 		resultLogger.logComment(String.format("%s success, %s errors", done.size(), failed.size()));
 		resultLogger.close();
-		
+
 		// Quick output as RocketMapFormat
 		StringBuilder sb = new StringBuilder();
 		done.stream().forEach( acc -> sb.append("ptc,"+acc.getAccountData().getUsername()+","+acc.getAccountData().getPassword()+"\n"));

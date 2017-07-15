@@ -76,8 +76,14 @@ public class Configuration {
 	private int maxRetry = 3;
 
 	private int captchaMaxTotalTime = 600;
-	
+
 	private int captchaMaxParallelChallenges = 20;
+
+	private String dbHost;
+	private int dbPort;
+	private String dbName;
+	private String dbUser;
+	private String dbPass;
 
 	// If true, everything will be mocked
 	private boolean dryRun = false;
@@ -173,7 +179,7 @@ public class Configuration {
 
 	/**
 	 * Check if all config are OK
-	 * 
+	 *
 	 * @return
 	 */
 	public boolean checkConfiguration() {
@@ -239,7 +245,7 @@ public class Configuration {
 
 	/**
 	 * Load config from prop file
-	 * 
+	 *
 	 * @param configFilePath
 	 */
 	private void load(String configFilePath) {
@@ -260,13 +266,19 @@ public class Configuration {
 			this.setTwoCaptchaApiKey(prop.getProperty("twoCaptcha.key"));
 			this.setDumpResult(Integer.parseInt(prop.getProperty("dumpResult", String.valueOf(PtcSession.NEVER))));
 			this.setCaptchaMaxTotalTime(Integer.parseInt(prop.getProperty("captchaMaxTotalTime", String.valueOf(captchaMaxTotalTime))));
-			
+
 			this.setCaptchaMaxParallelChallenges(Integer.parseInt(prop.getProperty("captchaMaxParallelChallenges", String.valueOf(captchaMaxParallelChallenges))));
 
 			String customPeriod = prop.getProperty("proxyPolicy.custom.period");
 			if (customPeriod != null && NumberUtils.isNumber(customPeriod)) {
 				proxyPolicy = new TimeLimitPolicy(5, Integer.parseInt(customPeriod) * 60);
 			}
+
+			this.setDbHost(prop.getProperty("dbHost"));
+			this.setDbPort(Integer.parseInt(prop.getProperty("dbPort")));
+			this.setDbName(prop.getProperty("dbName"));
+			this.setDbUser(prop.getProperty("dbUser"));
+			this.setDbPass(prop.getProperty("dbPass"));
 
 			this.loadProxies(prop.getProperty("proxies"));
 
